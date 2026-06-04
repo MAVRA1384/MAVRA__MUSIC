@@ -1,4 +1,5 @@
 python-telegram-bot==20.7
 yt-dlp
-shazamio
+shazamio==0.4.0
 ffmpeg-python
+pydub
