@@ -132,30 +132,4 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-app.run_polling()        if video_path and os.path.exists(video_path):
-            with open(video_path, 'rb') as v:
-                await update.message.reply_video(v)
-            song_data = await loop.run_in_executor(None, find_song, video_path)
-            os.remove(video_path)
-            if song_data['found']:
-                title = song_data['title']
-                artist = song_data['artist']
-                await update.message.reply_text(f"🎵 آهنگ: {title}\n🎤 خواننده: {artist}\n\n⏳ در حال دانلود آهنگ...")
-                song_path = await loop.run_in_executor(None, download_song, title, artist)
-                if song_path and os.path.exists(song_path):
-                    with open(song_path, 'rb') as s:
-                        await update.message.reply_audio(s, title=title, performer=artist)
-                    os.remove(song_path)
-                else:
-                    await update.message.reply_text("❌ نتونستم فایل آهنگ رو دانلود کنم")
-            else:
-                await update.message.reply_text("❌ آهنگی پیدا نشد")
-        else:
-            await update.message.reply_text("❌ نتونستم ویدیو رو دانلود کنم")
-    except Exception as e:
-        await update.message.reply_text(f"❌ خطا: {str(e)}")
-
-app = ApplicationBuilder().token(BOT_TOKEN).build()
-app.add_handler(CommandHandler("start", start))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 app.run_polling()
