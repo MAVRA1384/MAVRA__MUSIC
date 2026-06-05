@@ -1,11 +1,18 @@
 import asyncio
 import os
-import requests
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 import yt_dlp
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
+CHANNEL_ID = "@MAVRA_MUSIC"
+
+async def check_membership(bot, user_id):
+    try:
+        member = await bot.get_chat_member(CHANNEL_ID, user_id)
+        return member.status in ['member', 'administrator', 'creator']
+    except:
+        return False
 
 def download_instagram(url: str) -> str:
     ydl_opts = {
@@ -22,9 +29,21 @@ def download_instagram(url: str) -> str:
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
+    user_id = update.message.from_user.id
+
+    if not await check_membership(context.bot, user_id):
+        keyboard = [[InlineKeyboardButton("عضویت در کانال 🎵", url="https://t.me/MAVRA_MUSIC")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(
+            "❌ برای استفاده از ربات ابتدا در کانال ما عضو شو!",
+            reply_markup=reply_markup
+        )
+        return
+
     if "instagram.com" not in text:
         await update.message.reply_text("لطفاً یه لینک اینستاگرام بفرست!")
         return
+
     await update.message.reply_text("⏳ در حال پردازش...")
     try:
         loop = asyncio.get_event_loop()
