@@ -7,7 +7,7 @@ import yt_dlp
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
-async def download_instagram(url: str) -> str:
+def download_instagram(url: str) -> str:
     ydl_opts = {
         'outtmpl': '/tmp/video.%(ext)s',
         'format': 'best[filesize<50M]',
@@ -27,7 +27,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await update.message.reply_text("⏳ در حال پردازش...")
     try:
-        video_path = await asyncio.to_thread(download_instagram, text)
+        loop = asyncio.get_event_loop()
+        video_path = await loop.run_in_executor(None, download_instagram, text)
         if video_path and os.path.exists(video_path):
             with open(video_path, 'rb') as v:
                 await update.message.reply_video(v)
