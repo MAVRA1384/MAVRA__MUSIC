@@ -29,6 +29,19 @@ def download_instagram(url: str) -> str:
             return f'/tmp/{f}'
     return None
 
+def download_youtube(url: str) -> str:
+    ydl_opts = {
+        'outtmpl': '/tmp/yt_video.%(ext)s',
+        'format': 'best[filesize<50M]/best',
+        'quiet': True,
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([url])
+    for f in os.listdir('/tmp'):
+        if f.startswith('yt_video.'):
+            return f'/tmp/{f}'
+    return None
+
 def find_song(video_path: str) -> dict:
     try:
         with open(video_path, 'rb') as f:
@@ -68,10 +81,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"سلام {user_name} عزیز! 🎵\n\n"
         "به ربات MAVRA MUSIC خوش اومدی! 🎶\n\n"
-        "🔹 لینک پست یا ریل اینستاگرام رو بفرست\n"
+        "🔹 لینک پست یا ریل اینستاگرام بفرست\n"
+        "🔹 لینک ویدیوی یوتیوب بفرست\n"
         "🔹 ویدیو رو دانلود میکنم\n"
         "🔹 آهنگش رو پیدا میکنم و لینکش رو میدم!\n\n"
-        "یه لینک اینستاگرام بفرست! 👇"
+        "یه لینک بفرست! 👇"
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -84,33 +98,46 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
         return
-    if "instagram.com" not in text:
-        await update.message.reply_text("لطفاً یه لینک اینستاگرام بفرست! 🔗")
+
+    is_instagram = "instagram.com" in text
+    is_youtube = "youtube.com" in text or "youtu.be" in text
+
+    if not is_instagram and not is_youtube:
+        await update.message.reply_text("لطفاً لینک اینستاگرام یا یوتیوب بفرست! 🔗")
         return
+
     await update.message.reply_text("⏳ در حال پردازش، صبر کن...")
     loop = asyncio.get_event_loop()
     try:
-        video_path = await loop.run_in_executor(None, download_instagram, text)
+        if is_instagram:
+            video_path = await loop.run_in_executor(None, download_instagram, text)
+        else:
+            video_path = await loop.run_in_executor(None, download_youtube, text)
+
         if video_path and os.path.exists(video_path):
             with open(video_path, 'rb') as v:
                 await update.message.reply_video(v)
-            song_data = await loop.run_in_executor(None, find_song, video_path)
-            os.remove(video_path)
-            if song_data['found']:
-                title = song_data['title']
-                artist = song_data['artist']
-                msg = f"🎵 آهنگ: {title}\n🎤 خواننده: {artist}\n\n"
-                buttons = []
-                if song_data.get('spotify'):
-                    buttons.append([InlineKeyboardButton("🟢 Spotify", url=song_data['spotify'])])
-                if song_data.get('apple'):
-                    buttons.append([InlineKeyboardButton("🍎 Apple Music", url=song_data['apple'])])
-                if buttons:
-                    await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(buttons))
+
+            if is_instagram:
+                song_data = await loop.run_in_executor(None, find_song, video_path)
+                os.remove(video_path)
+                if song_data['found']:
+                    title = song_data['title']
+                    artist = song_data['artist']
+                    msg = f"🎵 آهنگ: {title}\n🎤 خواننده: {artist}\n\n"
+                    buttons = []
+                    if song_data.get('spotify'):
+                        buttons.append([InlineKeyboardButton("🟢 Spotify", url=song_data['spotify'])])
+                    if song_data.get('apple'):
+                        buttons.append([InlineKeyboardButton("🍎 Apple Music", url=song_data['apple'])])
+                    if buttons:
+                        await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(buttons))
+                    else:
+                        await update.message.reply_text(msg)
                 else:
-                    await update.message.reply_text(msg)
+                    await update.message.reply_text("❌ آهنگی پیدا نشد")
             else:
-                await update.message.reply_text("❌ آهنگی پیدا نشد")
+                os.remove(video_path)
         else:
             await update.message.reply_text("❌ نتونستم ویدیو رو دانلود کنم")
     except Exception as e:
