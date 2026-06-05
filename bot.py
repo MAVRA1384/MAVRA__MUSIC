@@ -10,7 +10,7 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN")
 def download_instagram(url: str) -> str:
     ydl_opts = {
         'outtmpl': '/tmp/video.%(ext)s',
-        'format': 'best[filesize<50M]',
+        'format': 'best',
         'quiet': True,
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
