@@ -40,32 +40,20 @@ def find_song(video_path: str) -> dict:
         result = response.json()
         if result.get('status') == 'success' and result.get('result'):
             song = result['result']
+            spotify = song.get('spotify', {})
+            apple = song.get('apple_music', {})
+            spotify_link = spotify.get('external_urls', {}).get('spotify', '') if spotify else ''
+            apple_link = apple.get('url', '') if apple else ''
             return {
                 'title': song.get('title', 'نامشخص'),
                 'artist': song.get('artist', 'نامشخص'),
+                'spotify': spotify_link,
+                'apple': apple_link,
                 'found': True
             }
         return {'found': False}
     except:
         return {'found': False}
-
-def download_song(title: str, artist: str) -> str:
-    try:
-        query = f"ytsearch1:{artist} {title} official audio"
-        ydl_opts = {
-            'outtmpl': '/tmp/song.%(ext)s',
-            'format': 'worst[ext=mp4]/worst',
-            'quiet': True,
-            'noplaylist': True,
-        }
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([query])
-        for f in os.listdir('/tmp'):
-            if f.startswith('song.'):
-                return f'/tmp/{f}'
-        return None
-    except:
-        return None
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.message.from_user.first_name
@@ -82,7 +70,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "به ربات MAVRA MUSIC خوش اومدی! 🎶\n\n"
         "🔹 لینک پست یا ریل اینستاگرام رو بفرست\n"
         "🔹 ویدیو رو دانلود میکنم\n"
-        "🔹 آهنگش رو پیدا و دانلود میکنم!\n\n"
+        "🔹 آهنگش رو پیدا میکنم و لینکش رو میدم!\n\n"
         "یه لینک اینستاگرام بفرست! 👇"
     )
 
@@ -111,16 +99,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if song_data['found']:
                 title = song_data['title']
                 artist = song_data['artist']
-                await update.message.reply_text(
-                    f"🎵 آهنگ: {title}\n🎤 خواننده: {artist}\n\n⏳ در حال دانلود آهنگ..."
-                )
-                song_path = await loop.run_in_executor(None, download_song, title, artist)
-                if song_path and os.path.exists(song_path):
-                    with open(song_path, 'rb') as s:
-                        await update.message.reply_audio(s, title=title, performer=artist)
-                    os.remove(song_path)
+                msg = f"🎵 آهنگ: {title}\n🎤 خواننده: {artist}\n\n"
+                buttons = []
+                if song_data.get('spotify'):
+                    buttons.append([InlineKeyboardButton("🟢 Spotify", url=song_data['spotify'])])
+                if song_data.get('apple'):
+                    buttons.append([InlineKeyboardButton("🍎 Apple Music", url=song_data['apple'])])
+                if buttons:
+                    await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(buttons))
                 else:
-                    await update.message.reply_text("❌ نتونستم فایل آهنگ رو دانلود کنم")
+                    await update.message.reply_text(msg)
             else:
                 await update.message.reply_text("❌ آهنگی پیدا نشد")
         else:
