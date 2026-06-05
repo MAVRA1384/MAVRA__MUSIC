@@ -1,10 +1,12 @@
 import asyncio
 import os
+import requests
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters, ContextTypes
 import yt_dlp
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
+AUDD_TOKEN = os.environ.get("AUDD_TOKEN")
 CHANNEL_ID = "@MAVRA_MUSIC"
 
 async def check_membership(bot, user_id):
@@ -27,6 +29,24 @@ def download_instagram(url: str) -> str:
             return f'/tmp/{f}'
     return None
 
+def find_song(video_path: str) -> str:
+    try:
+        with open(video_path, 'rb') as f:
+            response = requests.post(
+                'https://api.audd.io/',
+                data={'api_token': AUDD_TOKEN, 'return': 'apple_music,spotify'},
+                files={'file': f}
+            )
+        result = response.json()
+        if result.get('status') == 'success' and result.get('result'):
+            song = result['result']
+            title = song.get('title', 'نامشخص')
+            artist = song.get('artist', 'نامشخص')
+            return f"🎵 آهنگ: {title}\n🎤 خواننده: {artist}"
+        return "❌ آهنگی پیدا نشد"
+    except:
+        return "❌ خطا در آهنگ‌یابی"
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.message.from_user.first_name
     user_id = update.message.from_user.id
@@ -43,8 +63,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"سلام {user_name} عزیز! 🎵\n\n"
         "به ربات MAVRA MUSIC خوش اومدی! 🎶\n\n"
-        "🔹 کافیه لینک یه پست یا ریل اینستاگرام رو برام بفرستی\n"
-        "🔹 ویدیو رو برات دانلود میکنم\n\n"
+        "🔹 لینک پست یا ریل اینستاگرام رو بفرست\n"
+        "🔹 ویدیو رو دانلود میکنم\n"
+        "🔹 آهنگش رو هم پیدا میکنم!\n\n"
         "یه لینک اینستاگرام بفرست! 👇"
     )
 
@@ -72,7 +93,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if video_path and os.path.exists(video_path):
             with open(video_path, 'rb') as v:
                 await update.message.reply_video(v)
-            await update.message.reply_text("✅ ویدیو دانلود شد!")
+            song_info = await loop.run_in_executor(None, find_song, video_path)
+            await update.message.reply_text(song_info)
             os.remove(video_path)
         else:
             await update.message.reply_text("❌ نتونستم ویدیو رو دانلود کنم")
