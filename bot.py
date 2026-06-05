@@ -51,12 +51,11 @@ def find_song(video_path: str) -> dict:
 
 def download_song(title: str, artist: str) -> str:
     try:
-        query = f"{artist} {title}"
+        query = f"ytsearch1:{artist} {title} official audio"
         ydl_opts = {
             'outtmpl': '/tmp/song.%(ext)s',
-            'format': 'bestaudio',
+            'format': 'worst[ext=mp4]/worst',
             'quiet': True,
-            'default_search': 'ytsearch1',
             'noplaylist': True,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
