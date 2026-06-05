@@ -1,7 +1,7 @@
 import asyncio
 import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
+from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters, ContextTypes
 import yt_dlp
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
@@ -27,6 +27,27 @@ def download_instagram(url: str) -> str:
             return f'/tmp/{f}'
     return None
 
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_name = update.message.from_user.first_name
+    user_id = update.message.from_user.id
+
+    if not await check_membership(context.bot, user_id):
+        keyboard = [[InlineKeyboardButton("عضویت در کانال 🎵", url="https://t.me/MAVRA_MUSIC")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(
+            f"سلام {user_name} عزیز! 👋\n\n❌ برای استفاده از ربات ابتدا در کانال ما عضو شو!",
+            reply_markup=reply_markup
+        )
+        return
+
+    await update.message.reply_text(
+        f"سلام {user_name} عزیز! 🎵\n\n"
+        "به ربات MAVRA MUSIC خوش اومدی! 🎶\n\n"
+        "🔹 کافیه لینک یه پست یا ریل اینستاگرام رو برام بفرستی\n"
+        "🔹 ویدیو رو برات دانلود میکنم\n\n"
+        "یه لینک اینستاگرام بفرست! 👇"
+    )
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     user_id = update.message.from_user.id
@@ -41,10 +62,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if "instagram.com" not in text:
-        await update.message.reply_text("لطفاً یه لینک اینستاگرام بفرست!")
+        await update.message.reply_text("لطفاً یه لینک اینستاگرام بفرست! 🔗")
         return
 
-    await update.message.reply_text("⏳ در حال پردازش...")
+    await update.message.reply_text("⏳ در حال پردازش، صبر کن...")
     try:
         loop = asyncio.get_event_loop()
         video_path = await loop.run_in_executor(None, download_instagram, text)
@@ -59,5 +80,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ خطا: {str(e)}")
 
 app = ApplicationBuilder().token(BOT_TOKEN).build()
+app.add_handler(CommandHandler("start", start))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 app.run_polling()
